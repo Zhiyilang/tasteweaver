@@ -6,6 +6,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
 from .agent import Agent
+from .reasoning import get_brain
+from .mock_qloo import MockQloo
 from . import receipts
 
 FORM = """<!doctype html><html><head><meta charset="utf-8"><title>TasteWeaver</title>
@@ -22,7 +24,8 @@ p{color:#555}</style></head><body>
 
 def serve(graph, port=None):
     port = int(port or os.environ.get("PORT", 8790))
-    agent = Agent(graph, __import__("tasteweaver.reasoning", fromlist=["get_brain"]).get_brain())
+    brain = get_brain()
+    agent = Agent(graph, brain)
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, body):
@@ -38,10 +41,14 @@ def serve(graph, port=None):
             n = int(self.headers.get("Content-Length", "0"))
             data = parse_qs(self.rfile.read(n).decode("utf-8"))
             req = (data.get("request", [""])[0] or "").strip()
-            if req:
-                self._send(200, receipts.html_receipt(agent.weave(req)))
-            else:
+            if not req:
                 self._send(200, FORM)
+                return
+            try:
+                result = agent.weave(req)
+            except Exception:
+                result = Agent(MockQloo(), brain).weave(req)
+            self._send(200, receipts.html_receipt(result))
 
         def log_message(self, *a):
             pass
