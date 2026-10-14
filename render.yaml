@@ -1,0 +1,22 @@
+# Render Blueprint - one-click deploy for the TasteWeaver hosted demo.
+# The app reads PORT and auto-selects the LIVE Qloo Taste Graph when
+# QLOO_API_KEY is set; otherwise it runs the offline mock (safe for CI).
+# Using Render also targets the hackathon's "Best Use of Render" award.
+services:
+  - type: web
+    name: tasteweaver
+    runtime: python
+    plan: free
+    buildCommand: "true"
+    startCommand: "python -m tasteweaver serve"
+    envVars:
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: QLOO_API_KEY
+        sync: false
+      - key: TASTEWEAVER_LLM_BASE_URL
+        value: https://token-plan-cn.xiaomimimo.com/v1
+      - key: TASTEWEAVER_LLM_API_KEY
+        sync: false
+      - key: TASTEWEAVER_LLM_MODEL
+        value: mimo-v2-flash
