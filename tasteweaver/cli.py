@@ -2,6 +2,7 @@
 """Command line: weave / demo / serve."""
 from __future__ import annotations
 import argparse
+import os
 
 from .agent import Agent
 from . import receipts
@@ -16,7 +17,10 @@ DEMO_REQUESTS = [
 
 
 def build_graph(live):
-    if live:
+    # Auto-enable the live Qloo Taste Graph whenever QLOO_API_KEY is present
+    # (so a hosted deploy with the key set just works), else fall back to mock.
+    want_live = live or bool(os.environ.get("QLOO_API_KEY"))
+    if want_live:
         try:
             from .qloo import QlooClient
             g = QlooClient()
@@ -27,19 +31,32 @@ def build_graph(live):
     return MockQloo()
 
 
+def safe_weave(graph, brain, request):
+    """Run the agent; if the live taste graph raises, fall back to the offline
+    mock so a hosted demo never 500s. Empty live results are NOT an error -- the
+    agent then reports no picks rather than fabricating affinity."""
+    try:
+        return Agent(graph, brain).weave(request)
+    except Exception as e:
+        print("[tasteweaver] live graph error (%s); falling back to offline mock" % e)
+        return Agent(MockQloo(), brain).weave(request)
+
+
 def cmd_weave(args):
     from .reasoning import get_brain
-    agent = Agent(build_graph(args.live), get_brain())
-    print(receipts.text_receipt(agent.weave(" ".join(args.request))))
+    brain = get_brain()
+    graph = build_graph(args.live)
+    print(receipts.text_receipt(safe_weave(graph, brain, " ".join(args.request))))
 
 
 def cmd_demo(args):
     from .reasoning import get_brain
-    agent = Agent(build_graph(args.live), get_brain())
+    brain = get_brain()
+    graph = build_graph(args.live)
     for i, r in enumerate(DEMO_REQUESTS, 1):
         print("=" * 60)
         print("Scenario %d: %s" % (i, r))
-        print(receipts.text_receipt(agent.weave(r)))
+        print(receipts.text_receipt(safe_weave(graph, brain, r)))
         print()
 
 
