@@ -3,7 +3,7 @@
 The web console reads `PORT` and **auto-selects the live Qloo Taste Graph when
 `QLOO_API_KEY` is set**; with no key it runs the in-process mock (offline).
 
-## Render (recommended — also targets "Best Use of Render")
+## Render (recommended — satisfies the external-hosting requirement)
 1. Render dashboard → **New → Blueprint**, connect this repo (`render.yaml` included).
 2. In the service **Environment** tab, set `QLOO_API_KEY` (from the hackathon key email).
    `QLOO_BASE_URL` is preset to the hackathon endpoint.
