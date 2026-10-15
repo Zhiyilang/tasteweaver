@@ -1,7 +1,7 @@
 # Render Blueprint - one-click deploy for the TasteWeaver hosted demo.
 # The app reads PORT and auto-selects the LIVE Qloo Taste Graph when
 # QLOO_API_KEY is set; otherwise it runs the offline mock (safe for CI).
-# Using Render also targets the hackathon's "Best Use of Render" award.
+# Render satisfies the Qloo hackathon's external-hosting requirement.
 services:
   - type: web
     name: tasteweaver
