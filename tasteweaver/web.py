@@ -22,23 +22,30 @@ p{color:#555}</style></head><body>
 <button>Weave</button></form></body></html>"""
 
 
-def serve(graph, port=None):
+def make_server(graph, port=None):
+    """Build (do not start) the console server. Port 0 = ephemeral (tests)."""
     port = int(port or os.environ.get("PORT", 8790))
     brain = get_brain()
     agent = Agent(graph, brain)
 
     class Handler(BaseHTTPRequestHandler):
-        def _send(self, code, body):
+        def _send(self, code, body, ctype="text/html; charset=utf-8"):
             self.send_response(code)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", ctype)
             self.end_headers()
             self.wfile.write(body.encode("utf-8"))
 
         def do_GET(self):
+            if self.path.split("?")[0] == "/healthz":
+                self._send(200, "ok", "text/plain")
+                return
             self._send(200, FORM)
 
         def do_POST(self):
             n = int(self.headers.get("Content-Length", "0"))
+            if n > 64 * 1024:  # a "request" is a sentence, not an essay
+                self._send(413, "request too large", "text/plain")
+                return
             data = parse_qs(self.rfile.read(n).decode("utf-8"))
             req = (data.get("request", [""])[0] or "").strip()
             if not req:
@@ -53,5 +60,10 @@ def serve(graph, port=None):
         def log_message(self, *a):
             pass
 
-    print("TasteWeaver web console on http://0.0.0.0:%d" % port)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    return ThreadingHTTPServer(("0.0.0.0", port), Handler)
+
+
+def serve(graph, port=None):
+    srv = make_server(graph, port)
+    print("TasteWeaver web console on http://0.0.0.0:%d" % srv.server_address[1])
+    srv.serve_forever()

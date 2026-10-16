@@ -19,11 +19,15 @@ persist Qloo data into the public repo.)
 from __future__ import annotations
 import os
 import json
+import time
 import urllib.request
 import urllib.error
 from urllib.parse import urlencode
 
 HACKATHON_BASE = "https://hackathon.api.qloo.com"
+
+# Transient statuses worth one more try (rate limits + gateway blips).
+RETRYABLE = (429, 500, 502, 503, 504)
 
 # our planning domains -> Qloo entity types (per hackathon guide)
 DOMAIN_TO_TYPE = {
@@ -42,11 +46,17 @@ TYPE_TO_DOMAIN = {v: k for k, v in DOMAIN_TO_TYPE.items()}
 class QlooClient:
     name = "qloo-live"
 
-    def __init__(self, api_key=None, base_url=None, timeout=20):
+    def __init__(self, api_key=None, base_url=None, timeout=20,
+                 max_retries=3, backoff_base=1.0, opener=None, sleep=None):
         self.api_key = api_key or os.environ.get("QLOO_API_KEY", "")
         self.base_url = (base_url or os.environ.get("QLOO_BASE_URL") or HACKATHON_BASE).rstrip("/")
         self.timeout = timeout
         self.calls = 0
+        self.retries = 0
+        self.max_retries = max_retries
+        self.backoff_base = backoff_base
+        self._opener = opener or urllib.request.urlopen
+        self._sleep = sleep or time.sleep
         self._insights_cache = {}   # (entity_type, frozenset(tags)) -> {eid: {entity, affinity, matched_tags}}
         self._entities = {}         # eid -> normalized entity
         self._id_type = {}          # eid -> entity_type
@@ -54,13 +64,36 @@ class QlooClient:
             raise ValueError("QlooClient requires QLOO_API_KEY")
 
     # ---------- HTTP ----------
+    def _open(self, req):
+        """urlopen with bounded retry on transient statuses.
+
+        A single 429 must not kill a live demo, so rate limits and gateway
+        blips are retried with exponential backoff (honoring Retry-After).
+        Anything else raises immediately -- the caller falls back to the
+        offline mock rather than fabricating affinity.
+        """
+        for attempt in range(self.max_retries + 1):
+            try:
+                return self._opener(req, timeout=self.timeout)
+            except urllib.error.HTTPError as e:
+                if e.code in RETRYABLE and attempt < self.max_retries:
+                    retry_after = e.headers.get("Retry-After") if e.headers else None
+                    if retry_after and str(retry_after).isdigit():
+                        delay = float(retry_after)
+                    else:
+                        delay = self.backoff_base * (2 ** attempt)
+                    self.retries += 1
+                    self._sleep(delay)
+                    continue
+                raise
+
     def _get(self, path, params=None):
         url = self.base_url + path
         if params:
             url += "?" + urlencode(params)
         req = urllib.request.Request(url, method="GET", headers={
             "X-Api-Key": self.api_key, "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+        with self._open(req) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
     def _post(self, path, body):
@@ -69,7 +102,7 @@ class QlooClient:
                                      headers={"Content-Type": "application/json",
                                               "X-Api-Key": self.api_key,
                                               "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+        with self._open(req) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
     # ---------- parsing helpers ----------
@@ -155,8 +188,8 @@ class QlooClient:
                 name = t.get("name") if isinstance(t, dict) else t
                 if name:
                     tags.append(str(name).lower())
-        except Exception:
-            pass
+        except urllib.error.URLError:
+            pass  # network/API failure degrades to the raw anchor, never fabricates
         if not tags:
             tags = [a]
         # seed entities by name lookup
@@ -169,7 +202,7 @@ class QlooClient:
                 norm = self._norm(ent, etype)
                 if norm["id"]:
                     related.append(norm["id"])
-        except Exception:
+        except urllib.error.URLError:
             pass
         return {"anchor": a, "tags": tags, "related_entities": related}
 

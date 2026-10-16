@@ -9,8 +9,11 @@ LLMs can reason and plan, but they are culturally blind: ask one what to recomme
 > The thesis: a generic LLM produces plausible-sounding recommendations. TasteWeaver produces *actually good* ones, because it knows what people love — and it shows its work.
 
 - **Qloo-central** — every recommendation is scored against the user's real taste profile; remove Qloo and the agent stops working (by design).
+- **Currency-aware budgets** — "under 400 RMB" is normalized to USD (disclosed rate) before any comparison, so a yuan budget can never silently authorize a dollar-sized spend.
+- **Occasion-fit coherence** — picks are ranked by taste affinity *plus* occasion fit, so a date night ranks a candlelit jazz lounge above an equally-affine loud hotpot.
 - **Zero dependencies** — pure Python standard library. `pip install` nothing.
-- **Dual brain** — an OpenAI-compatible LLM brain for intent/explanation, or a deterministic offline brain. Degrades gracefully if the model is down.
+- **Dual brain** — an OpenAI-compatible LLM brain for intent/explanation, or a deterministic offline brain. LLM output is validated as untrusted input; degrades gracefully if the model is down.
+- **Live-API resilience** — the Qloo client retries rate limits (429) and gateway blips with exponential backoff, honoring `Retry-After`; a dead network degrades instead of crashing the loop.
 - **Evidence-cited reasoning** — each recommendation cites the affinity signals and constraints it used.
 - **Offline mock mode** — the full agent loop runs against an in-process Qloo mock, so anyone can run it with zero setup; `--live` points the same code at the real Qloo API.
 
@@ -25,10 +28,23 @@ request ──► PERCEIVE ──► PROFILE ──► SEARCH ──► PLAN ─
 1. **PERCEIVE** — parse the request: occasion, locale, budget, constraints (dietary, time, mood), and taste anchors ("she loves jazz", "he's into sci-fi").
 2. **PROFILE** — turn anchors into a taste profile across Qloo domains.
 3. **SEARCH** — query the Qloo Taste Graph for candidates in each relevant domain (dining, music, film, …), ranked with evidence.
-4. **PLAN** — assemble a coherent multi-domain plan (e.g., a themed evening) that respects budget and constraints.
+4. **PLAN** — assemble a coherent multi-domain plan (e.g., a themed evening) that respects budget and constraints; candidates are ranked by affinity **plus occasion fit**.
 5. **GROUND** — score each pick against the user's taste profile via Qloo affinity; drop anything that is a poor cultural fit.
 6. **EXPLAIN** — write a plain-English justification per pick, citing affinity + constraints.
 7. **RECEIPT** — a plan report (text + HTML) with the full decision trail and Qloo entity sources.
+
+## Budgets and currencies
+
+Requests may state a budget in either currency ("under 400 RMB", "under $50", "under 400元"). The planner normalizes every amount to USD before comparing (entities carry their own currency), and the receipt discloses exactly what happened:
+
+```
+Occasion: date-night | Locale: shanghai | Budget : ¥400 (≈$55.56 USD @ 7.2)
+Plan (spent ¥380.02 of ¥400):
+  - [dining] Blue Note Cellar  (affinity 0.40; fit 0.20; matched jazz,live-music; rating 4.6 ~¥380)
+Coherence: 1/2 picks carry 'date-night' occasion tags.
+```
+
+A `¥400` budget therefore authorizes ~$55.56 — never $400. The exchange rate is a documented constant (`CNY_PER_USD` in `planning.py`), not a hidden magic number.
 
 ## Quick start
 
@@ -81,6 +97,19 @@ export TASTEWEAVER_LLM_MODEL="mimo-v2-flash"
 
 The LLM does intent parsing and justification writing. If the endpoint is unreachable or returns unusable JSON, TasteWeaver falls back to the offline brain automatically.
 
+## Self-verification
+
+```bash
+python eval.py        # 79 assertions, offline, no keys
+```
+
+Covers: intent parsing (both currencies, both symbol styles), the taste-graph
+interface, currency normalization and budget enforcement (a ¥0 budget is treated
+as a real constraint, not "no budget"), occasion-fit ranking, the LLM brain's
+untrusted-output validation and offline fallback, the live client's
+retry/backoff/cache behavior through an injected fake transport, receipt
+structure and HTML escaping, the web console (`/healthz`, form, POST), and the CLI.
+
 ## Project layout
 
 ```
@@ -88,11 +117,11 @@ tasteweaver/
 ├── tasteweaver/
 │   ├── __init__.py
 │   ├── __main__.py     # python -m tasteweaver
-│   ├── qloo.py         # Qloo Taste Graph REST client (token / search / affinity)
+│   ├── qloo.py         # Qloo Taste Graph REST client (tags / search / insights, retry w/ backoff)
 │   ├── mock_qloo.py    # in-process Qloo mock (offline demo + tests)
 │   ├── profile.py      # taste anchors -> cross-domain taste profile
-│   ├── planning.py     # coherent multi-domain plan assembly
-│   ├── reasoning.py    # LLM brain + offline brain (one interface)
+│   ├── planning.py     # coherent multi-domain plan assembly (currency, budget, occasion fit)
+│   ├── reasoning.py    # LLM brain + offline brain (one interface, validated LLM output)
 │   ├── agent.py        # the agent loop
 │   ├── receipts.py     # text + HTML plan report with decision trail
 │   ├── cli.py          # weave / demo / serve commands

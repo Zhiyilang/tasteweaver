@@ -23,16 +23,16 @@ ANCHOR_TAGS = {
 
 _ENTITIES = [
     # dining
-    {"id": "d_jazz_lounge", "name": "Blue Note Cellar", "domain": "dining",
+    {"id": "d_jazz_lounge", "currency": "CNY", "name": "Blue Note Cellar", "domain": "dining",
      "tags": ["jazz", "live-music", "cocktail", "date-night"], "locale": "shanghai",
      "price": 380, "rating": 4.6, "source": "qloo://entity/d_jazz_lounge"},
-    {"id": "d_sichuan", "name": "Chuan Yu Hotpot", "domain": "dining",
+    {"id": "d_sichuan", "currency": "CNY", "name": "Chuan Yu Hotpot", "domain": "dining",
      "tags": ["spicy", "sichuan", "hot", "chinese"], "locale": "shanghai",
      "price": 130, "rating": 4.4, "source": "qloo://entity/d_sichuan"},
-    {"id": "d_vegan", "name": "Green Bowl Kitchen", "domain": "dining",
+    {"id": "d_vegan", "currency": "CNY", "name": "Green Bowl Kitchen", "domain": "dining",
      "tags": ["vegan", "plant-based", "healthy"], "locale": "shanghai",
      "price": 65, "rating": 4.2, "source": "qloo://entity/d_vegan"},
-    {"id": "d_omakase", "name": "Sakura Omakase", "domain": "dining",
+    {"id": "d_omakase", "currency": "CNY", "name": "Sakura Omakase", "domain": "dining",
      "tags": ["japanese", "omakase", "refined", "date-night"], "locale": "shanghai",
      "price": 680, "rating": 4.8, "source": "qloo://entity/d_omakase"},
     # music
@@ -56,17 +56,17 @@ _ENTITIES = [
      "tags": ["anime", "japanese", "romance"], "locale": "global",
      "price": 0, "rating": 4.6, "source": "qloo://entity/f_yourname"},
     # fashion
-    {"id": "fa_street", "name": "Jing'an Streetwear Capsule", "domain": "fashion",
+    {"id": "fa_street", "currency": "CNY", "name": "Jing'an Streetwear Capsule", "domain": "fashion",
      "tags": ["streetwear", "casual", "urban", "sneakers"], "locale": "shanghai",
      "price": 450, "rating": 4.1, "source": "qloo://entity/fa_street"},
-    {"id": "fa_linen", "name": "Quiet Linen Edit", "domain": "fashion",
+    {"id": "fa_linen", "currency": "CNY", "name": "Quiet Linen Edit", "domain": "fashion",
      "tags": ["minimal", "linen", "refined", "casual"], "locale": "shanghai",
      "price": 520, "rating": 4.3, "source": "qloo://entity/fa_linen"},
     # travel
     {"id": "t_westlake", "name": "West Lake Sunset Walk", "domain": "travel",
      "tags": ["scenic", "nature", "romance", "outdoors"], "locale": "hangzhou",
      "price": 0, "rating": 4.7, "source": "qloo://entity/t_westlake"},
-    {"id": "t_hike", "name": "Moganshan Ridge Trail", "domain": "travel",
+    {"id": "t_hike", "currency": "CNY", "name": "Moganshan Ridge Trail", "domain": "travel",
      "tags": ["hiking", "outdoors", "nature", "scenic"], "locale": "shanghai",
      "price": 120, "rating": 4.4, "source": "qloo://entity/t_hike"},
 ]
