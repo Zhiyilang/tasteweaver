@@ -100,7 +100,7 @@ The LLM does intent parsing and justification writing. If the endpoint is unreac
 ## Self-verification
 
 ```bash
-python eval.py        # 79 assertions, offline, no keys
+python eval.py        # 80 assertions, offline, no keys
 ```
 
 Covers: intent parsing (both currencies, both symbol styles), the taste-graph

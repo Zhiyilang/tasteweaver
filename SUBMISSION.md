@@ -29,7 +29,7 @@ request ─► PERCEIVE ─► PROFILE ─► SEARCH ─► PLAN ─► GROUND �
 
 - **Qloo-central**: every pick is scored against the user's real taste profile; remove Qloo and the agent stops working — by design.
 - **Dual brain**: an OpenAI-compatible LLM frames intent and writes justifications; a deterministic offline brain takes over instantly if the model is down. LLM output is validated as untrusted input (types coerced, unusable fields salvaged). The hosted demo runs live against the **Qloo Taste Graph** the moment `QLOO_API_KEY` is set.
-- **Offline mock mode**: the entire loop runs against an in-process Qloo mock, so `python eval.py` (79 assertions) and the demo need zero setup and zero keys.
+- **Offline mock mode**: the entire loop runs against an in-process Qloo mock, so `python eval.py` (80 assertions) and the demo need zero setup and zero keys.
 - **Currency-aware budgets**: "under 400 RMB" is normalized to USD at a disclosed rate before any comparison — a yuan budget can never authorize a dollar-sized spend.
 - **Occasion-fit coherence**: candidates are ranked by Qloo affinity *plus* occasion fit, and the receipt reports how many picks carry the occasion's tags.
 - **Live-API resilience**: rate limits (429) and gateway blips are retried with exponential backoff honoring `Retry-After`; a dead network degrades instead of crashing the loop.
@@ -40,7 +40,7 @@ request ─► PERCEIVE ─► PROFILE ─► SEARCH ─► PLAN ─► GROUND �
 ## 评分对照（我们如何命中）
 | 官方评分项 | TasteWeaver 的命中点 |
 |---|---|
-| **技术实现** | `qloo.py` 真 REST 客户端（tags / search / insights + 429 重试退避）+ 7 阶段 agent 闭环 + `eval.py` 79 断言；离线 mock 与真实 API 同码。货币归一、场合契合排序、LLM 输出校验均为工程级实现。 |
+| **技术实现** | `qloo.py` 真 REST 客户端（tags / search / insights + 429 重试退避）+ 7 阶段 agent 闭环 + `eval.py` 80 断言；离线 mock 与真实 API 同码。货币归一、场合契合排序、LLM 输出校验均为工程级实现。 |
 | **设计（完整产品）** | Web console + CLI（weave/demo/serve）+ 文本/HTML 回执，非技术原型；读 PORT、绑 0.0.0.0，Render 一键部署。 |
 | **潜在影响** | 真实场景：为电装修客户按情绪/舒适/个人品味推荐灯饰风格；为老人按易咀嚼/低热/用药禁忌推荐餐食——文化智能正是差异化所在。 |
 | **想法质量** | "模型负责框定、Qloo 负责文化根基、证据负责解释"的非显而易见切分；GROUND 在入计划前按真实品味画像剔除不匹配项。 |
