@@ -7,6 +7,7 @@ fake transport (no network, no key, no sleeping).
 import os
 import sys
 import json
+import time
 import threading
 import subprocess
 import urllib.request
@@ -376,6 +377,33 @@ def main():
                        cwd=HERE, env=env, capture_output=True, timeout=60)
     check("cli.weave-rc", p.returncode == 0, p.stderr.decode("utf-8", "replace")[-200:])
     check("cli.weave-output", "TasteWeaver plan" in p.stdout.decode("utf-8", "replace"))
+
+    # Regression (2026-10-17): `serve` must honour the PORT env var, not a
+    # hard-coded default. Render assigns a random $PORT; a fixed default
+    # silently ignored it and the host returned 502 on the demo URL.
+    port = 18793
+    env2 = dict(env)
+    env2["PORT"] = str(port)
+    srv = subprocess.Popen([sys.executable, "-m", "tasteweaver", "serve"],
+                           cwd=HERE, env=env2,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        ok = False
+        for _ in range(20):
+            time.sleep(0.3)
+            try:
+                with urllib.request.urlopen("http://127.0.0.1:%d/healthz" % port, timeout=2) as r:
+                    ok = r.status == 200
+                    break
+            except Exception:
+                continue
+        check("cli.serve-port-env", ok, "PORT=%d was not bound" % port)
+    finally:
+        srv.terminate()
+        try:
+            srv.wait(timeout=5)
+        except Exception:
+            srv.kill()
 
     print("\n%d passed, %d failed" % (PASS, FAIL))
     return 0 if FAIL == 0 else 1
